@@ -14,7 +14,7 @@ jobs:
     steps:
       - name: Download MicroPython
         run: |
-          git clone --recursive https://github.com/micropython/micropython.git
+          git clone https://github.com/micropython/micropython.git
           cd micropython
           git checkout v1.29.0
           git submodule update --init --recursive
@@ -24,13 +24,19 @@ jobs:
           cd micropython
           sed -i 's/-DRT_EXTRA=4096/-DRT_EXTRA=6144/' ports/esp8266/Makefile
           grep 'AXTLS_DEFS_EXTRA' ports/esp8266/Makefile
+          grep -q -- '-DRT_EXTRA=6144' ports/esp8266/Makefile
+
+      - name: Update esptool
+        run: |
+          python3 -m pip install --upgrade "esptool==4.8.1"
+          python3 -m esptool version
 
       - name: Build cross compiler
         run: |
           cd micropython
           make -C mpy-cross
 
-      - name: Build firmware
+      - name: Build ESP8266 firmware
         run: |
           cd micropython
           make -C ports/esp8266 BOARD=ESP8266_GENERIC
