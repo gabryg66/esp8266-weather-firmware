@@ -22,7 +22,12 @@ jobs:
           sed -i 's/-DRT_EXTRA=4096/-DRT_EXTRA=6144/' ports/esp8266/Makefile
           grep -q -- '-DRT_EXTRA=6144' ports/esp8266/Makefile
 
-      - name: Build using ESP8266 toolchain
+      - name: Install modern esptool
+        run: |
+          python3 -m pip install --user "esptool==4.8.1"
+          python3 -m esptool version
+
+      - name: Build MicroPython
         run: |
           docker run --rm \
             -v "$PWD:/work" \
@@ -31,7 +36,9 @@ jobs:
             sh -c '
               cd micropython &&
               make -C mpy-cross &&
-              make -C ports/esp8266 BOARD=ESP8266_GENERIC
+              make -C ports/esp8266 \
+                BOARD=ESP8266_GENERIC \
+                ESPTOOL="python3 -m esptool"
             '
 
       - name: Upload firmware
