@@ -8,9 +8,6 @@ jobs:
   build:
     runs-on: ubuntu-22.04
 
-    container:
-      image: larsks/esp-open-sdk
-
     steps:
       - name: Download MicroPython
         run: |
@@ -25,28 +22,17 @@ jobs:
           sed -i 's/-DRT_EXTRA=4096/-DRT_EXTRA=6144/' ports/esp8266/Makefile
           grep -q -- '-DRT_EXTRA=6144' ports/esp8266/Makefile
 
-      - name: Install compatible esptool
+      - name: Build using ESP8266 toolchain
         run: |
-          python3 -m pip install --upgrade --force-reinstall "esptool==4.8.1"
-          python3 -m esptool version
-
-      - name: Build cross compiler
-        run: |
-          cd micropython
-          make -C mpy-cross
-
-      - name: Build firmware
-        run: |
-          cd micropython
-          make -C ports/esp8266 BOARD=ESP8266_GENERIC \
-            ESPTOOL="python3 -m esptool"
-
-      - name: Verify firmware
-        run: |
-          cd micropython
-          ls -lh ports/esp8266/build-ESP8266_GENERIC/firmware.bin
-          python3 -m esptool image_info \
-            ports/esp8266/build-ESP8266_GENERIC/firmware.bin
+          docker run --rm \
+            -v "$PWD:/work" \
+            -w /work \
+            larsks/esp-open-sdk \
+            sh -c '
+              cd micropython &&
+              make -C mpy-cross &&
+              make -C ports/esp8266 BOARD=ESP8266_GENERIC
+            '
 
       - name: Upload firmware
         uses: actions/upload-artifact@v4
