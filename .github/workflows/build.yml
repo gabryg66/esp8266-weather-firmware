@@ -22,12 +22,7 @@ jobs:
           sed -i 's/-DRT_EXTRA=4096/-DRT_EXTRA=6144/' ports/esp8266/Makefile
           grep -q -- '-DRT_EXTRA=6144' ports/esp8266/Makefile
 
-      - name: Install modern esptool
-        run: |
-          python3 -m pip install --user "esptool==4.8.1"
-          python3 -m esptool version
-
-      - name: Build MicroPython
+      - name: Compile firmware ELF
         run: |
           docker run --rm \
             -v "$PWD:/work" \
@@ -38,8 +33,30 @@ jobs:
               make -C mpy-cross &&
               make -C ports/esp8266 \
                 BOARD=ESP8266_GENERIC \
-                ESPTOOL="python3 -m esptool"
+                build-ESP8266_GENERIC/firmware.elf
             '
+
+      - name: Install modern esptool
+        run: |
+          python3 -m venv /tmp/esp-tools
+          /tmp/esp-tools/bin/python -m pip install --upgrade pip setuptools wheel
+          /tmp/esp-tools/bin/python -m pip install "esptool==4.8.1"
+          /tmp/esp-tools/bin/python -m esptool version
+
+      - name: Generate firmware BIN
+        run: |
+          cd micropython/ports/esp8266
+          /tmp/esp-tools/bin/python -m esptool \
+            --chip esp8266 elf2image \
+            build-ESP8266_GENERIC/firmware.elf
+
+          python3 makeimg.py \
+            build-ESP8266_GENERIC/firmware.elf-0x00000.bin \
+            build-ESP8266_GENERIC/firmware.elf-0x[0-5][1-f]000.bin \
+            build-ESP8266_GENERIC/firmware.bin
+
+          test -s build-ESP8266_GENERIC/firmware.bin
+          ls -lh build-ESP8266_GENERIC/firmware.bin
 
       - name: Upload firmware
         uses: actions/upload-artifact@v4
