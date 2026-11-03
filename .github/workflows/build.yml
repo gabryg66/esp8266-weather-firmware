@@ -43,9 +43,14 @@ jobs:
           /tmp/esp-tools/bin/python -m pip install "esptool==4.8.1"
           /tmp/esp-tools/bin/python -m esptool version
 
+      - name: Fix file permissions
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" micropython
+
       - name: Generate firmware BIN
         run: |
           cd micropython/ports/esp8266
+
           /tmp/esp-tools/bin/python -m esptool \
             --chip esp8266 elf2image \
             build-ESP8266_GENERIC/firmware.elf
@@ -57,6 +62,12 @@ jobs:
 
           test -s build-ESP8266_GENERIC/firmware.bin
           ls -lh build-ESP8266_GENERIC/firmware.bin
+
+      - name: Verify firmware image
+        run: |
+          /tmp/esp-tools/bin/python -m esptool \
+            image_info \
+            micropython/ports/esp8266/build-ESP8266_GENERIC/firmware.bin
 
       - name: Upload firmware
         uses: actions/upload-artifact@v4
